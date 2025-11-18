@@ -1,0 +1,17 @@
+.client-tab {
+  background: #242838;
+  border: none;
+  padding: 8px 16px;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.client-tab.selected {
+  background: #3f7ef0;
+}
+
+.client-tab.add {
+  background: #2d313f;
+}

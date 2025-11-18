@@ -1,19 +1,18 @@
-import { app, BrowserWindow } from 'electron';
-import './ipc/products.ipc';
-import './ipc/inventory.ipc';
-import './ipc/tickets.ipc';
-import './ipc/expenses.ipc';
+import { app, BrowserWindow } from "electron";
+import { initDB } from "./db.js";
+import { registerIpcHandlers } from "./ipcHandlers.js";
 
-function createWindow() {
+async function createWindow() {
+  const db = await initDB();
+  registerIpcHandlers(db);
+
   const win = new BrowserWindow({
-    width: 1200,
-    height: 900,
     webPreferences: {
-      preload: `${__dirname}/preload.js`
-    }
+      preload: "./preload.js",
+    },
   });
 
-  win.loadURL('http://localhost:5173');
+  win.loadURL("http://localhost:3000");
 }
 
 app.whenReady().then(createWindow);

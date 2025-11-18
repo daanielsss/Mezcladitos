@@ -1,22 +1,18 @@
 "use strict";
 const electron = require("electron");
-electron.contextBridge.exposeInMainWorld("ipcRenderer", {
-  on(...args) {
-    const [channel, listener] = args;
-    return electron.ipcRenderer.on(channel, (event, ...args2) => listener(event, ...args2));
-  },
-  off(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.off(channel, ...omit);
-  },
-  send(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.send(channel, ...omit);
-  },
-  invoke(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.invoke(channel, ...omit);
-  }
-  // You can expose other APTs you need here.
-  // ...
-});
+const api = {
+  // PRODUCTS
+  getProducts: () => electron.ipcRenderer.invoke("products:getAll"),
+  addProduct: (data) => electron.ipcRenderer.invoke("products:add", data),
+  deleteProduct: (id) => electron.ipcRenderer.invoke("products:delete", id),
+  // INVENTORY
+  getInventory: () => electron.ipcRenderer.invoke("inventory:get"),
+  updateStock: (payload) => electron.ipcRenderer.invoke("inventory:updateStock", payload),
+  // TICKETS
+  createTicket: (total) => electron.ipcRenderer.invoke("tickets:create", total),
+  addTicketItem: (item) => electron.ipcRenderer.invoke("tickets:addItem", item),
+  // EXPENSES
+  addExpense: (data) => electron.ipcRenderer.invoke("expenses:add", data),
+  getExpenses: () => electron.ipcRenderer.invoke("expenses:getAll")
+};
+electron.contextBridge.exposeInMainWorld("api", api);
