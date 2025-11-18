@@ -1,24 +1,22 @@
-import { ipcRenderer, contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from "electron";
 
-// --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
-  on(...args: Parameters<typeof ipcRenderer.on>) {
-    const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
-  },
-  off(...args: Parameters<typeof ipcRenderer.off>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.off(channel, ...omit)
-  },
-  send(...args: Parameters<typeof ipcRenderer.send>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.send(channel, ...omit)
-  },
-  invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.invoke(channel, ...omit)
-  },
+export const api = {
+  // PRODUCTS
+  getProducts: () => ipcRenderer.invoke("products:getAll"),
+  addProduct: (data) => ipcRenderer.invoke("products:add", data),
+  deleteProduct: (id) => ipcRenderer.invoke("products:delete", id),
 
-  // You can expose other APTs you need here.
-  // ...
-})
+  // INVENTORY
+  getInventory: () => ipcRenderer.invoke("inventory:get"),
+  updateStock: (payload) => ipcRenderer.invoke("inventory:updateStock", payload),
+
+  // TICKETS
+  createTicket: (total) => ipcRenderer.invoke("tickets:create", total),
+  addTicketItem: (item) => ipcRenderer.invoke("tickets:addItem", item),
+
+  // EXPENSES
+  addExpense: (data) => ipcRenderer.invoke("expenses:add", data),
+  getExpenses: () => ipcRenderer.invoke("expenses:getAll"),
+};
+
+contextBridge.exposeInMainWorld("api", api);
