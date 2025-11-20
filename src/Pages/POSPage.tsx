@@ -69,7 +69,7 @@ export default function POSPage() {
                   onClick={() => removeProduct(item.id)}
                   className="bg-red-600 px-2 py-1 rounded text-sm hover:bg-red-500"
                 >
-                  –
+                
                 </button>
               </div>
             </div>

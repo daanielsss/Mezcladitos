@@ -1,22 +1,24 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { ipcRenderer, contextBridge } from 'electron'
 
-export const api = {
-  // PRODUCTS
-  getProducts: () => ipcRenderer.invoke("products:getAll"),
-  addProduct: (data) => ipcRenderer.invoke("products:add", data),
-  deleteProduct: (id) => ipcRenderer.invoke("products:delete", id),
+// API Expuesta
+const api = {
+  // Productos
+  getProducts: () => ipcRenderer.invoke('products:getAll'),
+  addProduct: (data: any) => ipcRenderer.invoke('products:add', data),
+  deleteProduct: (id: number) => ipcRenderer.invoke('products:delete', id),
 
-  // INVENTORY
-  getInventory: () => ipcRenderer.invoke("inventory:get"),
-  updateStock: (payload) => ipcRenderer.invoke("inventory:updateStock", payload),
+  // Inventario
+  getInventory: () => ipcRenderer.invoke('inventory:get'),
+  updateStock: (payload: any) => ipcRenderer.invoke('inventory:updateStock', payload),
 
-  // TICKETS
-  createTicket: (total) => ipcRenderer.invoke("tickets:create", total),
-  addTicketItem: (item) => ipcRenderer.invoke("tickets:addItem", item),
+  // Tickets
+  createTicket: (total: number) => ipcRenderer.invoke('tickets:create', total),
+  addTicketItem: (item: any) => ipcRenderer.invoke('tickets:addItem', item),
+  closeTicket: (ticket_id: number) => ipcRenderer.invoke('tickets:close', ticket_id),
 
-  // EXPENSES
-  addExpense: (data) => ipcRenderer.invoke("expenses:add", data),
-  getExpenses: () => ipcRenderer.invoke("expenses:getAll"),
-};
+  // Gastos
+  addExpense: (data: any) => ipcRenderer.invoke('expenses:add', data),
+  getExpenses: () => ipcRenderer.invoke('expenses:getAll'),
+}
 
-contextBridge.exposeInMainWorld("api", api);
+contextBridge.exposeInMainWorld('api', api)

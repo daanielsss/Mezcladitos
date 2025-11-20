@@ -1,142 +1,113 @@
 import { ipcMain } from "electron";
 import Database from "better-sqlite3";
-import { Product } from "../src/types/Product";
+
+// Definimos tipos básicos para evitar errores de TS
+interface ProductData {
+  name: string;
+  price: number;
+  categoryId: number;
+  image?: string;
+  stock?: number;
+}
+
+interface TicketItem {
+  ticket_id: number;
+  product_id: number;
+  qty: number;
+  price: number;
+}
+
+interface ExpenseData {
+  amount: number;
+  category: string;
+  note?: string;
+}
 
 export function registerIpcHandlers(db: Database.Database) {
-  // ===================== PRODUCTS & INVENTORY =====================
+  
+  // --- PRODUCTOS ---
   ipcMain.handle("products:getAll", () => {
-    // Joins products, categories, and inventory to match the frontend Product type.
+    // Unimos productos con categorías
     const stmt = db.prepare(`
-      SELECT 
-        p.id, 
-        p.name, 
-        p.price, 
-        c.name AS category, 
-        IFNULL(i.stock, 0) AS stock, 
-        p.image
-      FROM products p
+      SELECT p.*, c.name as category 
+      FROM products p 
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN inventory i ON p.id = i.product_id
       ORDER BY p.name ASC
     `);
     return stmt.all();
   });
 
-  ipcMain.handle("products:add", (
-    _,
-    product: Omit<Product, "id" | "stock" | "category"> & { categoryId: number }
-  ) => {
-    // 1. Insert product
-    const insertProduct = db.prepare(`
-      INSERT INTO products (name, price, category_id, image) 
-      VALUES (?, ?, ?, ?)
-    `);
-    
-    // Use transaction to ensure both inserts succeed
-    const runInTransaction = db.transaction((product) => {
-      const result = insertProduct.run(
-        product.name,
-        product.price,
-        product.categoryId,
-        product.image || null
-      );
-      const productId = result.lastInsertRowid;
-
-      // 2. Insert initial inventory record (default stock: 0)
-      const insertInventory = db.prepare(`
-        INSERT INTO inventory (product_id, stock, unit)
-        VALUES (?, 0, 'unidad')
-      `);
-      insertInventory.run(productId);
-
-      return { id: productId };
-    });
-
-    return runInTransaction(product);
+  ipcMain.handle("products:add", (_, product: ProductData) => {
+    const { name, price, categoryId, image, stock } = product;
+    const stmt = db.prepare(
+      "INSERT INTO products (name, price, category_id, image, stock) VALUES (?, ?, ?, ?, ?)"
+    );
+    const info = stmt.run(name, price, categoryId, image || null, stock || 0);
+    return { id: info.lastInsertRowid };
   });
 
   ipcMain.handle("products:delete", (_, id: number) => {
-    // Delete associated records first (ticket_items, inventory) due to FOREIGN KEY constraints.
-    db.transaction(() => {
-        db.prepare('DELETE FROM ticket_items WHERE product_id = ?').run(id);
-        db.prepare('DELETE FROM inventory WHERE product_id = ?').run(id);
-        db.prepare('DELETE FROM products WHERE id = ?').run(id);
-    })();
+    db.prepare("DELETE FROM products WHERE id = ?").run(id);
     return { success: true };
   });
 
-  // Since the frontend uses 'inventory:get' for the Inventory page, we link it here.
+  // --- INVENTARIO ---
   ipcMain.handle("inventory:get", () => {
-    return db.prepare(`
-      SELECT 
-        p.id, 
-        p.name, 
-        p.price, 
-        c.name AS category, 
-        IFNULL(i.stock, 0) AS stock, 
-        p.image
-      FROM products p
-      LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN inventory i ON p.id = i.product_id
-      ORDER BY p.name ASC
-    `).all();
+    // Por ahora usamos la tabla products como fuente de verdad simple
+    return db.prepare("SELECT * FROM products").all();
   });
 
-  // Updates stock in the dedicated inventory table by product_id
-  ipcMain.handle("inventory:updateStock", (_, { productId, amount }) => {
-    db.prepare("UPDATE inventory SET stock = stock + ? WHERE product_id = ?").run(amount, productId);
+  ipcMain.handle("inventory:updateStock", (_, { id, qty }) => {
+    db.prepare("UPDATE products SET stock = stock + ? WHERE id = ?").run(qty, id);
     return { success: true };
   });
 
-
-  // ===================== TICKETS =====================
-  ipcMain.handle("tickets:create", () => {
-    // Creates new ticket with current timestamp and total 0
-    const result = db.prepare("INSERT INTO tickets (total, datetime) VALUES (0, DATETIME('now'))").run();
-    return { id: result.lastID };
+  // --- TICKETS (CLIENTES) ---
+  ipcMain.handle("tickets:create", (_, total: number) => {
+    const stmt = db.prepare("INSERT INTO tickets (total, datetime) VALUES (?, DATETIME('now'))");
+    const info = stmt.run(total || 0);
+    return { id: info.lastInsertRowid };
   });
 
-  ipcMain.handle("tickets:addItem", (
-    _,
-    item: { ticket_id: number; product_id: number; qty: number; price: number }
-  ) => {
+  ipcMain.handle("tickets:addItem", (_, item: TicketItem) => {
     const { ticket_id, product_id, qty, price } = item;
-    
-    // Use transaction to ensure atomicity
-    db.transaction(() => {
-        // 1. Add item to ticket_items
-        db.prepare(
-          "INSERT INTO ticket_items (ticket_id, product_id, quantity, subtotal) VALUES (?, ?, ?, ?)"
-        ).run(ticket_id, product_id, qty, qty * price);
+    const subtotal = qty * price;
 
-        // 2. Update ticket total
-        db.prepare(
-          "UPDATE tickets SET total = total + ? WHERE id = ?"
-        ).run(qty * price, ticket_id);
+    // Transacción: Agregar item + Restar Inventario + Actualizar Total del Ticket
+    const transaction = db.transaction(() => {
+      // 1. Insertar item
+      db.prepare(`
+        INSERT INTO ticket_items (ticket_id, product_id, quantity, subtotal)
+        VALUES (?, ?, ?, ?)
+      `).run(ticket_id, product_id, qty, subtotal);
 
-        // 3. Update inventory stock (reduce) - assumes inventory.product_id matches products.id
-        db.prepare(
-            "UPDATE inventory SET stock = stock - ? WHERE product_id = ?"
-        ).run(qty, product_id);
-    })();
+      // 2. Actualizar total del ticket
+      db.prepare(`
+        UPDATE tickets SET total = total + ? WHERE id = ?
+      `).run(subtotal, ticket_id);
 
+      // 3. Descontar inventario
+      db.prepare(`
+        UPDATE products SET stock = stock - ? WHERE id = ?
+      `).run(qty, product_id);
+    });
+
+    transaction();
     return { success: true };
   });
-  
-  // To close a ticket and log the transaction date
+
   ipcMain.handle("tickets:close", (_, ticket_id: number) => {
-    db.prepare("UPDATE tickets SET datetime = DATETIME('now') WHERE id = ?").run(ticket_id);
+    db.prepare("UPDATE tickets SET closed_at = DATETIME('now') WHERE id = ?").run(ticket_id);
     return { success: true };
   });
 
-  // ===================== EXPENSES =====================
-  ipcMain.handle("expenses:add", (_, data: { amount: number; category: string; note?: string }) => {
-    const { amount, category, note } = data;
-    const result = db.prepare(
-      "INSERT INTO expenses (datetime, amount, category, note) VALUES (DATETIME('now'), ?, ?, ?)"
-    ).run(amount, category, note || null);
-    
-    return { id: result.lastID };
+  // --- GASTOS ---
+  ipcMain.handle("expenses:add", (_, data: ExpenseData) => {
+    const stmt = db.prepare(
+      "INSERT INTO expenses (amount, category, note, datetime) VALUES (?, ?, ?, DATETIME('now'))"
+    );
+    const info = stmt.run(data.amount, data.category, data.note || "");
+    return { id: info.lastInsertRowid };
   });
 
   ipcMain.handle("expenses:getAll", () => {
