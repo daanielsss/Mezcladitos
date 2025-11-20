@@ -903,9 +903,9 @@ function registerIpcHandlers(db2) {
     return db2.prepare("SELECT * FROM expenses ORDER BY datetime DESC").all();
   });
 }
+createRequire(import.meta.url);
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$1 = path$1.dirname(__filename$1);
-createRequire(import.meta.url);
 process.env.APP_ROOT = path$1.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path$1.join(process.env.APP_ROOT, "dist-electron");
