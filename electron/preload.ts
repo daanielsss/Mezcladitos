@@ -11,9 +11,10 @@ const api = {
   getInventory: () => ipcRenderer.invoke('inventory:get'),
   updateStock: (payload: any) => ipcRenderer.invoke('inventory:updateStock', payload),
 
-  // Tickets
+ // Tickets
   createTicket: (total: number) => ipcRenderer.invoke('tickets:create', total),
   addTicketItem: (item: any) => ipcRenderer.invoke('tickets:addItem', item),
+  getTicketItems: (ticketId: number) => ipcRenderer.invoke('tickets:getItems', ticketId), // <-- NUEVO
   closeTicket: (ticket_id: number) => ipcRenderer.invoke('tickets:close', ticket_id),
 
   // Gastos

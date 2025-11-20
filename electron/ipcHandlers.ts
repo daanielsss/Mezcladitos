@@ -25,6 +25,23 @@ interface ExpenseData {
 
 export function registerIpcHandlers(db: Database.Database) {
   
+    // NUEVO: Obtener ítems de un ticket específico
+  ipcMain.handle("tickets:getItems", (_, ticket_id: number) => {
+    const stmt = db.prepare(`
+      SELECT 
+        ti.id,
+        ti.product_id,
+        ti.quantity as qty,
+        ti.subtotal,
+        p.name,
+        p.price
+      FROM ticket_items ti
+      JOIN products p ON ti.product_id = p.id
+      WHERE ti.ticket_id = ?
+    `);
+    return stmt.all(ticket_id);
+  });
+  
   // --- PRODUCTOS ---
   ipcMain.handle("products:getAll", () => {
     // Unimos productos con categorías
