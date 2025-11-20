@@ -16,6 +16,9 @@ const api = {
   closeTicket: (ticket_id) => electron.ipcRenderer.invoke("tickets:close", ticket_id),
   // Gastos
   addExpense: (data) => electron.ipcRenderer.invoke("expenses:add", data),
-  getExpenses: () => electron.ipcRenderer.invoke("expenses:getAll")
+  getExpenses: () => electron.ipcRenderer.invoke("expenses:getAll"),
+  // Reportes
+  getDailyStats: () => electron.ipcRenderer.invoke("reports:getDailyStats"),
+  getSalesHistory: () => electron.ipcRenderer.invoke("reports:getSalesHistory")
 };
 electron.contextBridge.exposeInMainWorld("api", api);

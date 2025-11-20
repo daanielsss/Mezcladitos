@@ -130,4 +130,50 @@ export function registerIpcHandlers(db: Database.Database) {
   ipcMain.handle("expenses:getAll", () => {
     return db.prepare("SELECT * FROM expenses ORDER BY datetime DESC").all();
   });
+  // ===================== REPORTES & DASHBOARD =====================
+  
+  // Estadísticas del día actual
+  ipcMain.handle("reports:getDailyStats", () => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // 1. Total Ventas Hoy (Tickets cerrados)
+    const sales = db.prepare(`
+      SELECT IFNULL(SUM(total), 0) as total, COUNT(*) as count 
+      FROM tickets 
+      WHERE closed_at IS NOT NULL 
+      AND date(closed_at) = date('now', 'localtime')
+    `).get() as { total: number, count: number };
+
+    // 2. Total Gastos Hoy
+    const expenses = db.prepare(`
+      SELECT IFNULL(SUM(amount), 0) as total 
+      FROM expenses 
+      WHERE date(datetime) = date('now', 'localtime')
+    `).get() as { total: number };
+
+    // 3. Productos con stock bajo (menos de 10 unidades)
+    const lowStock = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM products 
+      WHERE stock <= 10
+    `).get() as { count: number };
+
+    return {
+      salesTotal: sales.total,
+      salesCount: sales.count,
+      expensesTotal: expenses.total,
+      lowStockCount: lowStock.count
+    };
+  });
+
+  // Historial de ventas (Últimos 50 tickets cerrados)
+  ipcMain.handle("reports:getSalesHistory", () => {
+    return db.prepare(`
+      SELECT id, total, closed_at 
+      FROM tickets 
+      WHERE closed_at IS NOT NULL 
+      ORDER BY closed_at DESC 
+      LIMIT 50
+    `).all();
+  });
 }

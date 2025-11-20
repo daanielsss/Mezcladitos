@@ -151,6 +151,40 @@ function registerIpcHandlers(db2) {
   ipcMain.handle("expenses:getAll", () => {
     return db2.prepare("SELECT * FROM expenses ORDER BY datetime DESC").all();
   });
+  ipcMain.handle("reports:getDailyStats", () => {
+    (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const sales = db2.prepare(`
+      SELECT IFNULL(SUM(total), 0) as total, COUNT(*) as count 
+      FROM tickets 
+      WHERE closed_at IS NOT NULL 
+      AND date(closed_at) = date('now', 'localtime')
+    `).get();
+    const expenses = db2.prepare(`
+      SELECT IFNULL(SUM(amount), 0) as total 
+      FROM expenses 
+      WHERE date(datetime) = date('now', 'localtime')
+    `).get();
+    const lowStock = db2.prepare(`
+      SELECT COUNT(*) as count 
+      FROM products 
+      WHERE stock <= 10
+    `).get();
+    return {
+      salesTotal: sales.total,
+      salesCount: sales.count,
+      expensesTotal: expenses.total,
+      lowStockCount: lowStock.count
+    };
+  });
+  ipcMain.handle("reports:getSalesHistory", () => {
+    return db2.prepare(`
+      SELECT id, total, closed_at 
+      FROM tickets 
+      WHERE closed_at IS NOT NULL 
+      ORDER BY closed_at DESC 
+      LIMIT 50
+    `).all();
+  });
 }
 createRequire$1(import.meta.url);
 const __filename$1 = fileURLToPath(import.meta.url);

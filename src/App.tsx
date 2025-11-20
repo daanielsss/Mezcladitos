@@ -6,6 +6,7 @@ import POSPage from "./Pages/POSPage";
 import InventoryPage from "./Pages/InventoryPage";
 import ExpensesPage from "./Pages/ExpensesPage";
 import SettingsPage from "./Pages/SettingsPage";
+import ReportsPage from "./Pages/ReportsPage";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
       </Routes>
     </Layout>
   );

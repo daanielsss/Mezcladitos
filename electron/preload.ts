@@ -20,6 +20,10 @@ const api = {
   // Gastos
   addExpense: (data: any) => ipcRenderer.invoke('expenses:add', data),
   getExpenses: () => ipcRenderer.invoke('expenses:getAll'),
+
+  // Reportes
+  getDailyStats: () => ipcRenderer.invoke('reports:getDailyStats'),
+  getSalesHistory: () => ipcRenderer.invoke('reports:getSalesHistory'),
 }
 
 contextBridge.exposeInMainWorld('api', api)
