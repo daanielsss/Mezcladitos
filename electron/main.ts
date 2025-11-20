@@ -3,6 +3,10 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
+// NEW IMPORTS: Initialize DB and register handlers
+import db from './db' // Import the better-sqlite3 instance
+import { registerIpcHandlers } from './ipcHandlers'
+
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -26,7 +30,11 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 let win: BrowserWindow | null
 
-function createWindow() {
+async function createWindow() { // Function must be async now to handle potential setup
+
+  // NEW: Register IPC Handlers with the database instance
+  registerIpcHandlers(db)
+
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
