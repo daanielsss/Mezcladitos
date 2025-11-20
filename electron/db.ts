@@ -1,11 +1,13 @@
-import Database from "better-sqlite3";
 import path from "path";
-import fs from "fs";
 import { app } from "electron";
+import { createRequire } from "module"; // Importamos createRequire
 
-// Usar app.getPath para asegurar persistencia en producción
+// Usamos require para cargar better-sqlite3 de forma segura
+const require = createRequire(import.meta.url);
+const Database = require("better-sqlite3");
+
+// Ruta de la BD
 const dbPath = path.join(app.getPath("userData"), "mezcladitos.db");
-
 console.log("📂 Database Path:", dbPath);
 
 const db = new Database(dbPath);
@@ -64,8 +66,8 @@ db.exec(`
   );
 `);
 
-// Seed Inicial (Opcional: Solo si está vacía)
-const seed = db.prepare("SELECT COUNT(*) as total FROM categories").get() as { total: number };
+// Seed Inicial
+const seed = db.prepare("SELECT COUNT(*) as total FROM categories").get();
 if (seed.total === 0) {
   console.log("🌱 Insertando datos semilla...");
   db.exec(`
